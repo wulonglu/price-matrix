@@ -124,6 +124,8 @@ var importPreviewData=[];
 function previewImport(){
   var raw=document.getElementById('importJSON').value.trim();
   if(!raw){document.getElementById('importPreview').style.display='none';return}
+  // 清洗：去掉前缀文字如 "【官方大促】10条\n\n"
+  raw=raw.replace(/^[^\[\{]*[\n\r]*/,'').trim();
   try{
     var items=JSON.parse(raw);
     if(!Array.isArray(items))items=[items];
