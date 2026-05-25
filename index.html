@@ -53,6 +53,7 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 <div class="toolbar">
 <h1>网店产品价盘管理表</h1>
 <button class="btn-i" onclick="openImport()">导入活动数据</button>
+<button class="btn-i" onclick="openBaseUpdate()" style="background:#7B2D8B;border-color:#7B2D8B">更新基础价格</button>
 <button class="btn-s" onclick="saveAndPush()">保存到线上</button>
 <a href="price-matrix.xlsx" class="btn btn-e">导出Excel</a>
 <input id="q" placeholder="搜索商品ID/编码/规格..." oninput="refresh()">
@@ -84,7 +85,22 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 </div>
 </div>
 
-<!-- 保存结果提示 -->
+<!-- 更新基础价格面板 -->
+<div class="modal" id="baseModal">
+<div class="modal-box">
+<h2>更新基础价格数据</h2>
+<p style="font-size:12px;color:#888;margin-bottom:12px">上传最新的品牌控价表和网店商品明细，自动匹配并计算页面价、官方立减</p>
+<div class="row"><label>品牌控价表:</label><input type="file" id="brandFile" accept=".xlsx" onchange="previewBase()"></div>
+<div class="row"><label>商品明细:</label><input type="file" id="productFile" accept=".xlsx" onchange="previewBase()"></div>
+<div class="result" id="basePreview" style="display:none"></div>
+<div class="btns">
+<button onclick="document.getElementById('baseModal').classList.remove('on')" style="background:#888;color:#fff">取消</button>
+<button onclick="doBaseUpdate()" style="background:#7B2D8B;color:#fff">合并更新</button>
+</div>
+</div>
+</div>
+
+
 <div class="modal" id="saveModal">
 <div class="modal-box">
 <h2>保存完成</h2>
@@ -251,6 +267,88 @@ function saveAndPush(){
 }
 
 fetch('data.json?v='+Date.now()).then(function(r){return r.json()}).then(function(d){D=d;document.getElementById('ld').style.display='none';refresh()});
+
+// ─── 基础价格更新 ───
+var baseUpdateData=null;
+function openBaseUpdate(){document.getElementById('baseModal').classList.add('on')}
+
+function readExcel(file,callback){
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var wb=XLSX.read(e.target.result,{type:'array'});
+    var ws=wb.Sheets[wb.SheetNames[0]];
+    var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    callback(rows);
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function previewBase(){
+  var bf=document.getElementById('brandFile').files[0];
+  var pf=document.getElementById('productFile').files[0];
+  if(!bf||!pf)return;
+  readExcel(bf,function(brandRows){
+    readExcel(pf,function(prodRows){
+      // 解析品牌控价表: 商品名称|商家编码|26年供价|官旗售价|管控底价
+      var brandMap={};
+      for(var i=1;i<brandRows.length;i++){
+        var code=String(brandRows[i][1]||'').trim();
+        if(!code||code==='无'||code==='待建')continue;
+        brandMap[code]={
+          name:brandRows[i][0],supply:parseFloat(brandRows[i][2])||0,
+          flagship:parseFloat(brandRows[i][3])||0,floor:parseFloat(brandRows[i][4])||0
+        };
+      }
+      // 解析商品明细: 商品Id(0)|...|skuId(12)|价格(13)|数量(14)|商家编码(15)
+      var updates=[],matched=0,unmatched=0;
+      for(var i=1;i<prodRows.length;i++){
+        var code=String(prodRows[i][15]||'').trim();
+        var pid=String(prodRows[i][0]||'').trim();
+        if(!pid)continue;
+        if(brandMap[code]){
+          var b=brandMap[code];
+          var pagePrice=Math.ceil((b.flagship||0)/0.85);
+          var discount=Math.round(pagePrice*0.15*100)/100;
+          updates.push({商品ID:pid,商家编码:code,
+            供价:b.supply,官旗:b.flagship,底价:b.floor,
+            页面价:pagePrice,立减:discount});
+          matched++;
+        }else{
+          unmatched++;
+        }
+      }
+      baseUpdateData={updates:updates,matched:matched,unmatched:unmatched};
+      document.getElementById('basePreview').innerHTML=
+        '匹配成功: <b>'+matched+'</b> 个编码 | 无品牌数据: '+unmatched+'<br>'+
+        '前5条预览:<br>'+updates.slice(0,5).map(function(u){
+          return u.商品ID+' 供价:'+u.供价+' 官旗:'+u.官旗+' 底价:'+u.底价+' 页面价:'+u.页面价+' 立减:'+u.立减;
+        }).join('<br>');
+      document.getElementById('basePreview').style.display='block';
+    });
+  });
+}
+
+function doBaseUpdate(){
+  if(!baseUpdateData)return alert('请先上传两个文件');
+  var updates=baseUpdateData.updates;
+  var updated=0;
+  updates.forEach(function(u){
+    var found=D.filter(function(r){return r['商品ID']===u.商品ID});
+    found.forEach(function(row){
+      row['品牌供价(26年)']=u.供价;
+      row['官旗售价']=u.官旗;
+      row['管控底价']=u.底价;
+      row['页面价格']=u.页面价;
+      row['官方立减金额(15%)']=u.立减;
+      updated++;
+    });
+  });
+  document.getElementById('baseModal').classList.remove('on');
+  baseUpdateData=null;
+  refresh();
+  alert('已更新 '+updated+' 条基础价格。点"保存到线上"推送到GitHub。');
+}
+
 </script>
 </body>
 </html>
