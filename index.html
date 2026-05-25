@@ -4,23 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>价盘管理表</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
 .toolbar{background:#fff;padding:10px 20px;border-bottom:1px solid #e8e8e8;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-.toolbar h1{font-size:17px;color:#1F4E79;margin-right:16px;white-space:nowrap}
+.toolbar h1{font-size:17px;color:#1F4E79;margin-right:12px;white-space:nowrap}
 .toolbar input,.toolbar select,.toolbar button{padding:6px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
-.toolbar input{width:220px}
-.toolbar button{background:#2E7D32;color:#fff;border-color:#2E7D32;cursor:pointer;font-weight:500}
-.toolbar button:hover{background:#1B5E20}
-.toolbar .btn-xlsx{background:#1F4E79}
-.toolbar .btn-xlsx:hover{background:#153D61}
+.toolbar input{width:200px}
+.toolbar button{background:#1F4E79;color:#fff;border-color:#1F4E79;cursor:pointer;font-weight:500}
+.toolbar button:hover{background:#153D61}
+.toolbar .btn-green{background:#2E7D32;border-color:#2E7D32}
+.toolbar .btn-green:hover{background:#1B5E20}
 .stats{font-size:12px;color:#888;margin-left:auto;white-space:nowrap}
-.table-wrap{overflow-x:auto;padding:12px}
-table{border-collapse:collapse;font-size:12px;width:100%;min-width:1500px}
-thead tr{position:sticky;top:56px;z-index:40}
-thead th{padding:7px 9px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #c0c5cc}
+.table-wrap{overflow-x:auto;padding:10px}
+table{border-collapse:separate;border-spacing:0;font-size:12px;width:100%;min-width:1500px}
+thead th{position:sticky;top:48px;z-index:40;padding:7px 8px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #b0b5bc;border-right:none;border-bottom:none}
+thead th:last-child{border-right:1px solid #b0b5bc}
+tbody td{padding:5px 8px;border:1px solid #e0e0e0;border-right:none;border-bottom:none;text-align:center;white-space:nowrap;background:#fff}
+tbody tr td:last-child{border-right:1px solid #e0e0e0}
+tbody tr:last-child td{border-bottom:1px solid #e0e0e0}
+tbody tr:nth-child(even) td{background:#f8f9fb}
+tbody tr:hover td{background:#e8f0fe}
+td.l{text-align:left}
+.loading{text-align:center;padding:50px;color:#888}
+
+/* 列颜色 */
 th.c-b{background:#1F4E79;color:#fff}
 th.c-o{background:#C55A11;color:#fff}
 th.c-g{background:#2E7D32;color:#fff}
@@ -31,19 +41,14 @@ th.c-ux{background:#7B2D8B;color:#fff}
 th.c-lj{background:#1A73E8;color:#fff}
 th.c-px{background:#00838F;color:#fff}
 th.c-cn{background:#2E7D32;color:#fff}
-tbody td{padding:5px 9px;border:1px solid #e8e8e8;text-align:center;white-space:nowrap}
-tbody tr:nth-child(even){background:#f8f9fb}
-tbody tr:hover{background:#e8f0fe}
-td.l{text-align:left}
-.loading{text-align:center;padding:60px;color:#888;font-size:14px}
 </style>
 </head>
 <body>
 <div class="toolbar">
   <h1>网店产品价盘管理表</h1>
-  <button class="btn-xlsx" onclick="exportXLSX()">导出 Excel</button>
-  <input id="s" placeholder="搜索商品ID/编码/规格..." oninput="f()">
-  <select id="fc" onchange="f()">
+  <button class="btn-green" onclick="exportXLSX()">导出 Excel</button>
+  <input id="s" placeholder="搜索商品ID/编码/规格..." oninput="filter()">
+  <select id="fc" onchange="filter()">
     <option value="">全部活动列</option>
     <option value="9">618大促</option>
     <option value="10">百亿补贴</option>
@@ -55,12 +60,16 @@ td.l{text-align:left}
   <span class="stats" id="st"></span>
 </div>
 <div class="table-wrap">
-  <table><thead><tr id="hrow"></tr></thead><tbody id="tb"></tbody></table>
+  <table>
+    <thead id="th"></thead>
+    <tbody id="tb"></tbody>
+  </table>
 </div>
 <div class="loading" id="ld">正在加载数据...</div>
 
 <script>
-var C=[
+// 列定义
+const cols=[
   {k:'商品ID',l:'商品ID',c:'c-b'},{k:'SKUID',l:'SKUID',c:'c-b'},
   {k:'商品编码',l:'商品编码',c:'c-b'},{k:'商品规格名称',l:'商品规格名称',c:'c-b'},
   {k:'品牌供价(26年)',l:'品牌供价',c:'c-o',m:1},{k:'官旗售价',l:'官旗售价',c:'c-o',m:1},
@@ -71,54 +80,126 @@ var C=[
   {k:'品牌新享加速类型',l:'品牌新享-加速',c:'c-px'},{k:'品牌新享费率%',l:'品牌新享-费率',c:'c-px'},
   {k:'参与活动数',l:'参与活动数',c:'c-cn'}
 ];
-var D=[];
+let data=[];
 
-function fm(v,c){
+function fmt(v,c){
   if(v==null||v===undefined||v==='')return'';
   if(c.m&&typeof v==='number')return v.toFixed(2);
+  if(c.m&&!isNaN(parseFloat(v)))return parseFloat(v).toFixed(2);
   return v;
 }
 
-function f(){
-  var s=document.getElementById('s').value.toLowerCase(),fc=document.getElementById('fc').value,r=D;
-  if(s)r=r.filter(function(d){return C.some(function(c){var v=d[c.k];return v!=null&&String(v).toLowerCase().indexOf(s)>=0})});
-  if(fc){var ci=parseInt(fc);r=r.filter(function(d){return d[C[ci].k]!=null&&d[C[ci].k]!==''})}
-  var h='';r.forEach(function(d){h+='<tr>';C.forEach(function(c,i){
-    var v=fm(d[c.k],c),cl=i===3?'l':'';
-    if(c.k==='品牌新享加速类型'&&String(v).indexOf('暂停')>=0)cl+=' pause';
-    h+='<td class="'+cl+'">'+(c.m&&v!==''?'¥':'')+v+'</td>'
-  });h+='</tr>'});
-  document.getElementById('tb').innerHTML=h;
-  document.getElementById('st').textContent=r.length+' / '+D.length+' 条';
+function render(){
+  // 渲染表头 - 只渲染一次
+  let h='<tr>';
+  cols.forEach((c,i)=>{
+    h+='<th class="'+c.c+'">'+c.l+'</th>';
+  });
+  h+='</tr>';
+  document.getElementById('th').innerHTML=h;
+  filter();
 }
 
-// 导出 Excel（样式与在线表一致）
-function exportXLSX(){
-  if(D.length===0)return alert('数据未加载');
-  var wsData=[];
-  // 表头
-  wsData.push(C.map(function(c){return c.l}));
-  // 数据
-  D.forEach(function(d){
-    wsData.push(C.map(function(c){return c.m&&d[c.k]!=null?parseFloat(d[c.k])||d[c.k]:d[c.k]||''}));
+function filter(){
+  const s=document.getElementById('s').value.toLowerCase();
+  const fc=document.getElementById('fc').value;
+  let rows=data;
+  if(s){
+    rows=rows.filter(r=>cols.some(c=>{
+      const v=r[c.k];
+      return v!=null&&String(v).toLowerCase().includes(s);
+    }));
+  }
+  if(fc){
+    const ci=parseInt(fc);
+    rows=rows.filter(r=>r[cols[ci].k]!=null&&r[cols[ci].k]!=='');
+  }
+  let html='';
+  rows.forEach(r=>{
+    html+='<tr>';
+    cols.forEach((c,i)=>{
+      const v=fmt(r[c.k],c);
+      let cls=i===3?'l':'';
+      if(c.k==='品牌新享加速类型'&&String(v).includes('暂停'))cls+=' pause';
+      const display=(c.m&&v!=='')?'¥'+v:v;
+      html+='<td class="'+cls+'">'+display+'</td>';
+    });
+    html+='</tr>';
   });
-  var ws=XLSX.utils.aoa_to_sheet(wsData);
+  document.getElementById('tb').innerHTML=html||'<tr><td colspan="'+cols.length+'" style="color:#888;text-align:center;padding:20px">无匹配数据</td></tr>';
+  document.getElementById('st').textContent=rows.length+' / '+data.length+' 条';
+}
+
+// 导出 Excel - 带彩色表头
+function exportXLSX(){
+  if(data.length===0)return alert('数据未加载，请等待');
+  
+  // 准备数据
+  const wsData=[];
+  // 表头行
+  wsData.push(cols.map(c=>c.l));
+  // 数据行
+  data.forEach(d=>{
+    wsData.push(cols.map(c=>{
+      if(c.m&&d[c.k]!=null)return parseFloat(d[c.k])||0;
+      return d[c.k]||'';
+    }));
+  });
+  
+  const ws=XLSX.utils.aoa_to_sheet(wsData);
   
   // 列宽
-  ws['!cols']=C.map(function(c,i){return i===3?{wch:28}:{wch:12}});
+  ws['!cols']=cols.map((c,i)=>i===3?{wch:28}:{wch:14});
   
-  ws['!autofilter']={ref:'A1:'+XLSX.utils.encode_col(C.length-1)+''+(D.length+1)};
+  // 设置表头样式（颜色）
+  const colorMap={
+    'c-b':'1F4E79','c-o':'C55A11','c-g':'2E7D32','c-6':'C55A11','c-by':'D42020',
+    'c-ms':'E05336','c-ux':'7B2D8B','c-lj':'1A73E8','c-px':'00838F','c-cn':'2E7D32'
+  };
   
-  var wb=XLSX.utils.book_new();
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let C=range.s.c;C<=range.e.c;C++){
+    const cellRef=XLSX.utils.encode_cell({r:0,c:C});
+    if(!ws[cellRef])continue;
+    const color=colorMap[cols[C].c];
+    if(color){
+      ws[cellRef].s={
+        fill:{fgColor:{rgb:color}},
+        font:{color:{rgb:'FFFFFF'},bold:true},
+        alignment:{horizontal:'center',vertical:'center'}
+      };
+    }
+  }
+  
+  // 数据行边框
+  for(let R=1;R<=range.e.r;R++){
+    for(let C=range.s.c;C<=range.e.c;C++){
+      const cellRef=XLSX.utils.encode_cell({r:R,c:C});
+      if(!ws[cellRef])ws[cellRef]={v:''};
+      if(!ws[cellRef].s)ws[cellRef].s={};
+      ws[cellRef].s.border={
+        top:{style:'thin',color:{rgb:'CCCCCC'}},
+        bottom:{style:'thin',color:{rgb:'CCCCCC'}},
+        left:{style:'thin',color:{rgb:'CCCCCC'}},
+        right:{style:'thin',color:{rgb:'CCCCCC'}}
+      };
+      ws[cellRef].s.alignment={horizontal:C===3?'left':'center',vertical:'center'};
+    }
+  }
+  
+  // 冻结首行
+  ws['!freeze']={xSplit:0,ySplit:1,topLeftCell:'A2',activePane:'bottomLeft'};
+  
+  const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'价盘管理表');
   XLSX.writeFile(wb,'价盘管理表_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
-fetch('data.json').then(function(r){return r.json()}).then(function(d){
-  D=d;document.getElementById('ld').style.display='none';
-  document.getElementById('hrow').innerHTML=C.map(function(c){return'<th class="'+c.c+'">'+c.l+'</th>'}).join('');
-  f();
-}).catch(function(){document.getElementById('ld').textContent='数据加载失败，请刷新页面'});
+// 加载数据
+fetch('data.json?_='+Date.now())
+  .then(r=>r.json())
+  .then(d=>{data=d;document.getElementById('ld').style.display='none';render();})
+  .catch(()=>document.getElementById('ld').textContent='数据加载失败，请刷新');
 </script>
 </body>
 </html>
