@@ -4,133 +4,121 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>价盘管理表</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
-.toolbar{background:#fff;padding:12px 20px;border-bottom:1px solid #e8e8e8;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-.toolbar h1{font-size:18px;color:#1F4E79;margin-right:20px}
-.toolbar input,.toolbar select{padding:6px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
-.toolbar input{width:240px}
-.stats{font-size:12px;color:#888;margin-left:auto}
+.toolbar{background:#fff;padding:10px 20px;border-bottom:1px solid #e8e8e8;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.toolbar h1{font-size:17px;color:#1F4E79;margin-right:16px;white-space:nowrap}
+.toolbar input,.toolbar select,.toolbar button{padding:6px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
+.toolbar input{width:220px}
+.toolbar button{background:#2E7D32;color:#fff;border-color:#2E7D32;cursor:pointer;font-weight:500}
+.toolbar button:hover{background:#1B5E20}
+.toolbar .btn-xlsx{background:#1F4E79}
+.toolbar .btn-xlsx:hover{background:#153D61}
+.stats{font-size:12px;color:#888;margin-left:auto;white-space:nowrap}
 .table-wrap{overflow-x:auto;padding:12px}
-table{border-collapse:collapse;font-size:12px;width:100%;min-width:1400px}
-thead th{position:sticky;top:60px;z-index:50;padding:8px 10px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #c8cdd4}
-th.col-blue{background:#1F4E79;color:#fff}
-th.col-orange{background:#C55A11;color:#fff}
-th.col-green{background:#2E7D32;color:#fff}
-th.col-618{background:#C55A11;color:#fff}
-th.col-by{background:#D42020;color:#fff}
-th.col-ms{background:#E05336;color:#fff}
-th.col-ux{background:#7B2D8B;color:#fff}
-th.col-lj{background:#1A73E8;color:#fff}
-th.col-px{background:#00838F;color:#fff}
-th.col-cnt{background:#2E7D32;color:#fff}
-tbody td{padding:6px 10px;border:1px solid #e8e8e8;text-align:center;white-space:nowrap}
+table{border-collapse:collapse;font-size:12px;width:100%;min-width:1500px}
+thead tr{position:sticky;top:56px;z-index:40}
+thead th{padding:7px 9px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #c0c5cc}
+th.c-b{background:#1F4E79;color:#fff}
+th.c-o{background:#C55A11;color:#fff}
+th.c-g{background:#2E7D32;color:#fff}
+th.c-6{background:#C55A11;color:#fff}
+th.c-by{background:#D42020;color:#fff}
+th.c-ms{background:#E05336;color:#fff}
+th.c-ux{background:#7B2D8B;color:#fff}
+th.c-lj{background:#1A73E8;color:#fff}
+th.c-px{background:#00838F;color:#fff}
+th.c-cn{background:#2E7D32;color:#fff}
+tbody td{padding:5px 9px;border:1px solid #e8e8e8;text-align:center;white-space:nowrap}
 tbody tr:nth-child(even){background:#f8f9fb}
 tbody tr:hover{background:#e8f0fe}
-td.left{text-align:left}
-.price{font-family:monospace;text-align:right}
-.pause{color:#C00000;font-weight:bold}
-.loading{text-align:center;padding:40px;color:#888}
-.last-update{font-size:11px;color:#aaa;text-align:center;padding:8px}
+td.l{text-align:left}
+.loading{text-align:center;padding:60px;color:#888;font-size:14px}
 </style>
 </head>
 <body>
 <div class="toolbar">
   <h1>网店产品价盘管理表</h1>
-  <input type="text" id="search" placeholder="搜索商品ID/编码/规格..." oninput="filter()">
-  <select id="filterCol" onchange="filter()">
+  <button class="btn-xlsx" onclick="exportXLSX()">导出 Excel</button>
+  <input id="s" placeholder="搜索商品ID/编码/规格..." oninput="f()">
+  <select id="fc" onchange="f()">
     <option value="">全部活动列</option>
-    <option value="9">618大促有活动</option>
-    <option value="10">百亿补贴有活动</option>
-    <option value="11">淘宝秒杀有活动</option>
-    <option value="12">天猫U先有活动</option>
-    <option value="13">超级立减有活动</option>
-    <option value="14">品牌新享有活动</option>
+    <option value="9">618大促</option>
+    <option value="10">百亿补贴</option>
+    <option value="11">淘宝秒杀</option>
+    <option value="12">天猫U先</option>
+    <option value="13">超级立减</option>
+    <option value="14">品牌新享</option>
   </select>
-  <div class="stats" id="stats"></div>
+  <span class="stats" id="st"></span>
 </div>
 <div class="table-wrap">
-  <table>
-    <thead id="thead"></thead>
-    <tbody id="tbody"></tbody>
-  </table>
+  <table><thead><tr id="hrow"></tr></thead><tbody id="tb"></tbody></table>
 </div>
-<div id="loading" class="loading">加载中...</div>
-<div class="last-update" id="lastUpdate"></div>
+<div class="loading" id="ld">正在加载数据...</div>
 
 <script>
-const cols=[
-  {key:'商品ID',label:'商品ID',cls:'col-blue'},
-  {key:'SKUID',label:'SKUID',cls:'col-blue'},
-  {key:'商品编码',label:'商品编码',cls:'col-blue'},
-  {key:'商品规格名称',label:'商品规格名称',cls:'col-blue'},
-  {key:'品牌供价(26年)',label:'品牌供价',cls:'col-orange',money:true},
-  {key:'官旗售价',label:'官旗售价',cls:'col-orange',money:true},
-  {key:'管控底价',label:'管控底价',cls:'col-orange',money:true},
-  {key:'页面价格',label:'页面价格',cls:'col-green',money:true},
-  {key:'官方立减金额(15%)',label:'官方立减',cls:'col-green',money:true},
-  {key:'618大促券后价',label:'618券后价',cls:'col-618',money:true},
-  {key:'百亿补贴活动价',label:'百亿补贴',cls:'col-by',money:true},
-  {key:'淘宝秒杀供货价',label:'秒杀供货价',cls:'col-ms',money:true},
-  {key:'天猫U先活动价',label:'U先活动价',cls:'col-ux',money:true},
-  {key:'超级立减活动价',label:'立减活动价',cls:'col-lj',money:true},
-  {key:'品牌新享加速类型',label:'新享加速',cls:'col-px'},
-  {key:'品牌新享费率%',label:'新享费率',cls:'col-px'},
-  {key:'参与活动数',label:'活动数',cls:'col-cnt'},
+var C=[
+  {k:'商品ID',l:'商品ID',c:'c-b'},{k:'SKUID',l:'SKUID',c:'c-b'},
+  {k:'商品编码',l:'商品编码',c:'c-b'},{k:'商品规格名称',l:'商品规格名称',c:'c-b'},
+  {k:'品牌供价(26年)',l:'品牌供价',c:'c-o',m:1},{k:'官旗售价',l:'官旗售价',c:'c-o',m:1},
+  {k:'管控底价',l:'管控底价',c:'c-o',m:1},{k:'页面价格',l:'页面价格',c:'c-g',m:1},
+  {k:'官方立减金额(15%)',l:'官方立减(15%)',c:'c-g',m:1},{k:'618大促券后价',l:'618大促券后价',c:'c-6',m:1},
+  {k:'百亿补贴活动价',l:'百亿补贴活动价',c:'c-by',m:1},{k:'淘宝秒杀供货价',l:'淘宝秒杀供货价',c:'c-ms',m:1},
+  {k:'天猫U先活动价',l:'天猫U先活动价',c:'c-ux',m:1},{k:'超级立减活动价',l:'超级立减活动价',c:'c-lj',m:1},
+  {k:'品牌新享加速类型',l:'品牌新享-加速',c:'c-px'},{k:'品牌新享费率%',l:'品牌新享-费率',c:'c-px'},
+  {k:'参与活动数',l:'参与活动数',c:'c-cn'}
 ];
+var D=[];
 
-let allData=[];
-
-function fmt(v,col){
-  if(v==null||v==='')return'';
-  if(col.money&&typeof v==='number')return'¥'+v.toFixed(2);
-  if(col.money&&!isNaN(parseFloat(v)))return'¥'+parseFloat(v).toFixed(2);
+function fm(v,c){
+  if(v==null||v===undefined||v==='')return'';
+  if(c.m&&typeof v==='number')return v.toFixed(2);
   return v;
 }
 
-function render(){
-  let h='<tr>'+cols.map(c=>'<th class="'+c.cls+'">'+c.label+'</th>').join('')+'</tr>';
-  document.getElementById('thead').innerHTML=h;
-  document.getElementById('stats').textContent=allData.length+' 条';
-  document.getElementById('lastUpdate').textContent='数据更新时间: '+new Date().toLocaleString();
-  filter();
+function f(){
+  var s=document.getElementById('s').value.toLowerCase(),fc=document.getElementById('fc').value,r=D;
+  if(s)r=r.filter(function(d){return C.some(function(c){var v=d[c.k];return v!=null&&String(v).toLowerCase().indexOf(s)>=0})});
+  if(fc){var ci=parseInt(fc);r=r.filter(function(d){return d[C[ci].k]!=null&&d[C[ci].k]!==''})}
+  var h='';r.forEach(function(d){h+='<tr>';C.forEach(function(c,i){
+    var v=fm(d[c.k],c),cl=i===3?'l':'';
+    if(c.k==='品牌新享加速类型'&&String(v).indexOf('暂停')>=0)cl+=' pause';
+    h+='<td class="'+cl+'">'+(c.m&&v!==''?'¥':'')+v+'</td>'
+  });h+='</tr>'});
+  document.getElementById('tb').innerHTML=h;
+  document.getElementById('st').textContent=r.length+' / '+D.length+' 条';
 }
 
-function filter(){
-  let s=document.getElementById('search').value.toLowerCase();
-  let fCol=document.getElementById('filterCol').value;
-  let rows=allData;
-  if(s){
-    rows=rows.filter(r=>cols.some(c=>{
-      let v=r[c.key];
-      return v!=null&&String(v).toLowerCase().includes(s);
-    }));
-  }
-  if(fCol){
-    let ci=parseInt(fCol);
-    rows=rows.filter(r=>r[cols[ci].key]!=null&&r[cols[ci].key]!=='');
-  }
-  let html='';
-  rows.forEach(r=>{
-    html+='<tr>';
-    cols.forEach((c,i)=>{
-      let v=fmt(r[c.key],c);
-      let cls='';
-      if(i===3)cls='left'; // 规格名称左对齐
-      if(c.key==='品牌新享加速类型'&&String(v).includes('暂停'))cls+=' pause';
-      html+='<td class="'+cls+'">'+v+'</td>';
-    });
-    html+='</tr>';
+// 导出 Excel（样式与在线表一致）
+function exportXLSX(){
+  if(D.length===0)return alert('数据未加载');
+  var wsData=[];
+  // 表头
+  wsData.push(C.map(function(c){return c.l}));
+  // 数据
+  D.forEach(function(d){
+    wsData.push(C.map(function(c){return c.m&&d[c.k]!=null?parseFloat(d[c.k])||d[c.k]:d[c.k]||''}));
   });
-  document.getElementById('tbody').innerHTML=html||'<tr><td colspan="'+cols.length+'" style="color:#888">无匹配数据</td></tr>';
-  document.getElementById('stats').textContent=rows.length+' / '+allData.length;
+  var ws=XLSX.utils.aoa_to_sheet(wsData);
+  
+  // 列宽
+  ws['!cols']=C.map(function(c,i){return i===3?{wch:28}:{wch:12}});
+  
+  ws['!autofilter']={ref:'A1:'+XLSX.utils.encode_col(C.length-1)+''+(D.length+1)};
+  
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'价盘管理表');
+  XLSX.writeFile(wb,'价盘管理表_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
-fetch('data.json?t='+Date.now())
-  .then(r=>r.json())
-  .then(d=>{allData=d;document.getElementById('loading').style.display='none';render()})
-  .catch(()=>document.getElementById('loading').textContent='加载失败，请刷新');
+fetch('data.json').then(function(r){return r.json()}).then(function(d){
+  D=d;document.getElementById('ld').style.display='none';
+  document.getElementById('hrow').innerHTML=C.map(function(c){return'<th class="'+c.c+'">'+c.l+'</th>'}).join('');
+  f();
+}).catch(function(){document.getElementById('ld').textContent='数据加载失败，请刷新页面'});
 </script>
 </body>
 </html>
