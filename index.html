@@ -2,208 +2,92 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>价盘管理表</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
-.toolbar{background:#fff;padding:10px 20px;border-bottom:1px solid #e8e8e8;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-.toolbar h1{font-size:17px;color:#1F4E79;margin-right:12px;white-space:nowrap}
-.toolbar input,.toolbar select,.toolbar button{padding:6px 12px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
-.toolbar input{width:200px}
-.toolbar button{background:#1F4E79;color:#fff;border-color:#1F4E79;cursor:pointer;font-weight:500}
-.toolbar button:hover{background:#153D61}
-.stats{font-size:12px;color:#888;margin-left:auto;white-space:nowrap}
-.table-wrap{overflow-x:auto;padding:10px}
-table{border-collapse:collapse;font-size:12px;width:100%;min-width:1500px}
-thead th{position:sticky;top:48px;z-index:40;padding:8px 10px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #c0c5cc}
-tbody td{padding:6px 10px;border:1px solid #e0e0e0;text-align:center;white-space:nowrap;background:#fff}
-tbody tr:nth-child(even) td{background:#f8f9fb}
-tbody tr:hover td{background:#e8f0fe}
-.loading{text-align:center;padding:50px;color:#888}
-
-th.c-b{background:#1F4E79;color:#fff}
-th.c-o{background:#C55A11;color:#fff}
-th.c-g{background:#2E7D32;color:#fff}
-th.c-6{background:#C55A11;color:#fff}
-th.c-by{background:#D42020;color:#fff}
-th.c-ms{background:#E05336;color:#fff}
-th.c-ux{background:#7B2D8B;color:#fff}
-th.c-lj{background:#1A73E8;color:#fff}
-th.c-px{background:#00838F;color:#fff}
-th.c-cn{background:#2E7D32;color:#fff}
+.toolbar{background:#fff;padding:10px 16px;border-bottom:1px solid #ddd;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.toolbar h1{font-size:17px;color:#1F4E79}
+.toolbar input,.toolbar select,.toolbar button{padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
+.toolbar button{background:#1F4E79;color:#fff;border-color:#1F4E79;cursor:pointer}
+.toolbar button:hover{opacity:.9}
+.toolbar .btn-e{background:#2E7D32;border-color:#2E7D32}
+.stats{font-size:12px;color:#888;margin-left:auto}
+.wrap{overflow-x:auto;padding:10px}
+#tbl{border-collapse:collapse;font-size:12px;width:100%;min-width:1500px}
+#tbl th{padding:8px 9px;font-size:11px;font-weight:600;white-space:nowrap;border:1px solid #b8bcc4}
+#tbl td{padding:6px 9px;border:1px solid #e0e0e0;white-space:nowrap}
+#tbl th.cb{background:#1F4E79;color:#fff}
+#tbl th.co{background:#C55A11;color:#fff}
+#tbl th.cg{background:#2E7D32;color:#fff}
+#tbl th.c6{background:#C55A11;color:#fff}
+#tbl th.cby{background:#D42020;color:#fff}
+#tbl th.cms{background:#E05336;color:#fff}
+#tbl th.cux{background:#7B2D8B;color:#fff}
+#tbl th.clj{background:#1A73E8;color:#fff}
+#tbl th.cpx{background:#00838F;color:#fff}
+#tbl th.ccn{background:#2E7D32;color:#fff}
+#tbl tr:nth-child(even) td{background:#f8f9fb}
+#tbl tr:nth-child(odd) td{background:#fff}
+#tbl tr:hover td{background:#e8f0fe!important}
+.ld{text-align:center;padding:40px;color:#888}
 </style>
 </head>
 <body>
 <div class="toolbar">
-  <h1>网店产品价盘管理表</h1>
-  <button onclick="exportExcel()">导出 Excel</button>
-  <input id="search" placeholder="搜索商品ID/编码/规格..." oninput="doFilter()">
-  <select id="filterCol" onchange="doFilter()">
-    <option value="">全部活动列</option>
-    <option value="9">618大促</option>
-    <option value="10">百亿补贴</option>
-    <option value="11">淘宝秒杀</option>
-    <option value="12">天猫U先</option>
-    <option value="13">超级立减</option>
-    <option value="14">品牌新享</option>
-  </select>
-  <span class="stats" id="stats"></span>
+<h1>网店产品价盘管理表</h1>
+<button class="btn-e" onclick="exportX()">导出Excel</button>
+<input id="q" placeholder="搜索商品ID/编码/规格..." oninput="refresh()">
+<select id="f" onchange="refresh()">
+<option value="">全部活动</option><option value="9">618大促</option><option value="10">百亿补贴</option><option value="11">淘宝秒杀</option><option value="12">天猫U先</option><option value="13">超级立减</option><option value="14">品牌新享</option>
+</select>
+<span class="stats" id="st"></span>
 </div>
-<div class="table-wrap">
-  <table id="mainTable">
-    <thead id="thead"></thead>
-    <tbody id="tbody"></tbody>
-  </table>
-</div>
-<div class="loading" id="loading">正在加载数据...</div>
+<div class="wrap"><table id="tbl"><tbody></tbody></table></div>
+<div class="ld" id="ld">正在加载数据...</div>
 
 <script>
-const cols=[
-  {k:'商品ID',l:'商品ID',c:'c-b'},{k:'SKUID',l:'SKUID',c:'c-b'},
-  {k:'商品编码',l:'商品编码',c:'c-b'},{k:'商品规格名称',l:'商品规格名称',c:'c-b'},
-  {k:'品牌供价(26年)',l:'品牌供价',c:'c-o'},{k:'官旗售价',l:'官旗售价',c:'c-o'},
-  {k:'管控底价',l:'管控底价',c:'c-o'},{k:'页面价格',l:'页面价格',c:'c-g'},
-  {k:'官方立减金额(15%)',l:'官方立减(15%)',c:'c-g'},{k:'618大促券后价',l:'618大促券后价',c:'c-6'},
-  {k:'百亿补贴活动价',l:'百亿补贴活动价',c:'c-by'},{k:'淘宝秒杀供货价',l:'淘宝秒杀供货价',c:'c-ms'},
-  {k:'天猫U先活动价',l:'天猫U先活动价',c:'c-ux'},{k:'超级立减活动价',l:'超级立减活动价',c:'c-lj'},
-  {k:'品牌新享加速类型',l:'品牌新享-加速',c:'c-px'},{k:'品牌新享费率%',l:'品牌新享-费率',c:'c-px'},
-  {k:'参与活动数',l:'参与活动数',c:'c-cn'}
-];
-let allData=[];
+var C=[
+{k:'商品ID',l:'商品ID',c:'cb'},{k:'SKUID',l:'SKUID',c:'cb'},{k:'商品编码',l:'商品编码',c:'cb'},{k:'商品规格名称',l:'商品规格名称',c:'cb'},
+{k:'品牌供价(26年)',l:'品牌供价',c:'co',m:1},{k:'官旗售价',l:'官旗售价',c:'co',m:1},{k:'管控底价',l:'管控底价',c:'co',m:1},
+{k:'页面价格',l:'页面价格',c:'cg',m:1},{k:'官方立减金额(15%)',l:'官方立减',c:'cg',m:1},{k:'618大促券后价',l:'618大促券后价',c:'c6',m:1},
+{k:'百亿补贴活动价',l:'百亿补贴活动价',c:'cby',m:1},{k:'淘宝秒杀供货价',l:'淘宝秒杀供货价',c:'cms',m:1},{k:'天猫U先活动价',l:'天猫U先活动价',c:'cux',m:1},
+{k:'超级立减活动价',l:'超级立减活动价',c:'clj',m:1},{k:'品牌新享加速类型',l:'品牌新享加速',c:'cpx'},{k:'品牌新享费率%',l:'品牌新享费率',c:'cpx'},
+{k:'参与活动数',l:'参与数',c:'ccn'}];
+var D=[];
 
-function format(v,c){
-  if(v==null||v==='')return'';
-  if(typeof v==='number')return v.toFixed(2);
-  if(!isNaN(parseFloat(v)))return parseFloat(v).toFixed(2);
-  return v;
+function fmt(v,c){if(v==null||v==='')return'';if(c.m&&typeof v==='number')return v.toFixed(2);if(c.m&&!isNaN(parseFloat(v)))return parseFloat(v).toFixed(2);return v}
+
+function refresh(){
+var q=document.getElementById('q').value.toLowerCase(),fc=document.getElementById('f').value,rows=D;
+if(q)rows=rows.filter(function(r){return C.some(function(c){var v=r[c.k];return v!=null&&String(v).toLowerCase().indexOf(q)>=0})});
+if(fc){var ci=parseInt(fc);rows=rows.filter(function(r){return r[C[ci].k]!=null&&r[C[ci].k]!==''})}
+var h='';
+// 表头行
+h+='<tr>';C.forEach(function(c){h+='<th class="'+c.c+'">'+c.l+'</th>'});h+='</tr>';
+// 数据行
+rows.forEach(function(r){h+='<tr>';C.forEach(function(c,i){var v=fmt(r[c.k],c);h+='<td>'+(c.m&&v!==''?'¥'+v:v)+'</td>'});h+='</tr>'});
+document.getElementById('tbl').innerHTML='<tbody>'+h+'</tbody>';
+document.getElementById('st').textContent=rows.length+' / '+D.length+' 条';
 }
 
-function render(){
-  // 渲染表头
-  let thHTML='<tr>';
-  cols.forEach(c=>{
-    thHTML+='<th class="'+c.c+'">'+c.l+'</th>';
-  });
-  thHTML+='</tr>';
-  document.getElementById('thead').innerHTML=thHTML;
-  
-  // 渲染数据
-  doFilter();
-  document.getElementById('loading').style.display='none';
+function exportX(){
+if(D.length===0)return;
+var a=[];a.push(C.map(function(c){return c.l}));
+D.forEach(function(r){a.push(C.map(function(c){var v=r[c.k];if(v==null)return'';if(typeof v==='number')return v;if(!isNaN(parseFloat(v)))return parseFloat(v);return v}))});
+var ws=XLSX.utils.aoa_to_sheet(a),wb=XLSX.utils.book_new();
+ws['!cols']=C.map(function(c,i){return i===3?{wch:30}:{wch:14}});
+var H={'cb':'1F4E79','co':'C55A11','cg':'2E7D32','c6':'C55A11','cby':'D42020','cms':'E05336','cux':'7B2D8B','clj':'1A73E8','cpx':'00838F','ccn':'2E7D32'};
+var R=XLSX.utils.decode_range(ws['!ref']);
+for(var i=R.s.c;i<=R.e.c;i++){var cr=XLSX.utils.encode_cell({r:0,c:i});ws[cr].s={fill:{patternType:'solid',fgColor:{rgb:H[C[i].c]},bgColor:{rgb:H[C[i].c]}},font:{color:{rgb:'FFFFFF'},bold:true},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}}
+for(var j=1;j<=R.e.r;j++){var cr2=XLSX.utils.encode_cell({r:j,c:i});if(!ws[cr2])ws[cr2]={v:''};ws[cr2].s={fill:{patternType:'solid',fgColor:{rgb:j%2?'F8F9FB':'FFFFFF'}},alignment:{horizontal:i===3?'left':'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'CCCCCC'}},bottom:{style:'thin',color:{rgb:'CCCCCC'}},left:{style:'thin',color:{rgb:'CCCCCC'}},right:{style:'thin',color:{rgb:'CCCCCC'}}}}}
+XLSX.utils.book_append_sheet(wb,ws,'价盘管理表');
+XLSX.writeFile(wb,'价盘管理表_'+new Date().toISOString().slice(0,10)+'.xlsx');
 }
 
-function doFilter(){
-  const s=document.getElementById('search').value.toLowerCase();
-  const fc=document.getElementById('filterCol').value;
-  let rows=allData;
-  
-  if(s){
-    rows=rows.filter(r=>cols.some(c=>{
-      const v=r[c.k];
-      return v!=null&&String(v).toLowerCase().includes(s);
-    }));
-  }
-  if(fc){
-    const ci=parseInt(fc);
-    rows=rows.filter(r=>r[cols[ci].k]!=null&&r[cols[ci].k]!=='');
-  }
-  
-  let tbHTML='';
-  rows.forEach(r=>{
-    tbHTML+='<tr>';
-    cols.forEach((c,i)=>{
-      let v=format(r[c.k],c);
-      let display=(i>=4&&i<=13&&v!=='')?'¥'+v:v;
-      tbHTML+='<td>'+display+'</td>';
-    });
-    tbHTML+='</tr>';
-  });
-  
-  document.getElementById('tbody').innerHTML=tbHTML;
-  document.getElementById('stats').textContent=rows.length+' / '+allData.length+' 条';
-}
-
-// 导出Excel - 使用完整样式
-function exportExcel(){
-  if(allData.length===0)return alert('数据未加载');
-  
-  // 创建工作簿
-  const wb=XLSX.utils.book_new();
-  
-  // 准备数据数组
-  const dataArray=[];
-  // 表头
-  dataArray.push(cols.map(c=>c.l));
-  // 数据
-  allData.forEach(row=>{
-    dataArray.push(cols.map(c=>{
-      const v=row[c.k];
-      if(v==null)return'';
-      if(typeof v==='number')return v;
-      if(!isNaN(parseFloat(v)))return parseFloat(v);
-      return v;
-    }));
-  });
-  
-  // 创建工作表
-  const ws=XLSX.utils.aoa_to_sheet(dataArray);
-  
-  // 列宽
-  ws['!cols']=cols.map((c,i)=>i===3?{wch:32}:{wch:16});
-  
-  // 设置样式 - 表头颜色
-  const headerColors={
-    'c-b':'1F4E79','c-o':'C55A11','c-g':'2E7D32','c-6':'C55A11','c-by':'D42020',
-    'c-ms':'E05336','c-ux':'7B2D8B','c-lj':'1A73E8','c-px':'00838F','c-cn':'2E7D32'
-  };
-  
-  // 为每个单元格设置样式
-  const range=XLSX.utils.decode_range(ws['!ref']);
-  
-  // 表头样式（第1行）
-  for(let C=0;C<cols.length;C++){
-    const cellRef=XLSX.utils.encode_cell({r:0,c:C});
-    if(!ws[cellRef])continue;
-    
-    const color=headerColors[cols[C].c];
-    ws[cellRef].s={
-      fill:{patternType:'solid',fgColor:{rgb:color},bgColor:{rgb:color}},
-      font:{color:{rgb:'FFFFFF'},bold:true,name:'微软雅黑',sz:11},
-      alignment:{horizontal:'center',vertical:'center',wrapText:true},
-      border:{top:{style:'thin',color:{rgb:'000000'}},bottom:{style:'thin',color:{rgb:'000000'}},left:{style:'thin',color:{rgb:'000000'}},right:{style:'thin',color:{rgb:'000000'}}}
-    };
-  }
-  
-  // 数据行样式
-  for(let R=1;R<=range.e.r;R++){
-    for(let C=0;C<cols.length;C++){
-      const cellRef=XLSX.utils.encode_cell({r:R,c:C});
-      if(!ws[cellRef])ws[cellRef]={v:''};
-      
-      const isEven=R%2===0;
-      ws[cellRef].s={
-        fill:{patternType:'solid',fgColor:{rgb:isEven?'F8F9FB':'FFFFFF'}},
-        font:{name:'微软雅黑',sz:10},
-        alignment:{horizontal:C===3?'left':'center',vertical:'center'},
-        border:{top:{style:'thin',color:{rgb:'CCCCCC'}},bottom:{style:'thin',color:{rgb:'CCCCCC'}},left:{style:'thin',color:{rgb:'CCCCCC'}},right:{style:'thin',color:{rgb:'CCCCCC'}}}
-      };
-    }
-  }
-  
-  // 冻结首行
-  ws['!freeze']={xSplit:0,ySplit:1};
-  
-  XLSX.utils.book_append_sheet(wb,ws,'价盘管理表');
-  XLSX.writeFile(wb,'价盘管理表_'+new Date().toISOString().slice(0,10)+'.xlsx');
-}
-
-// 加载数据
-fetch('data.json?v='+Date.now())
-  .then(r=>r.json())
-  .then(d=>{allData=d;render();})
-  .catch(e=>{document.getElementById('loading').textContent='加载失败: '+e.message;});
+fetch('data.json?v='+Date.now()).then(function(r){return r.json()}).then(function(d){D=d;document.getElementById('ld').style.display='none';refresh()});
 </script>
 </body>
 </html>
