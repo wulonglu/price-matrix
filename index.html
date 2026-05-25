@@ -28,6 +28,7 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 #tbl th.cms{background:#E05336;color:#fff}
 #tbl th.cux{background:#7B2D8B;color:#fff}
 #tbl th.clj{background:#1A73E8;color:#fff}
+#tbl th.cso{background:#B76E2E;color:#fff}
 #tbl th.cpx{background:#00838F;color:#fff}
 #tbl th.ccn{background:#2E7D32;color:#fff}
 #tbl tr:nth-child(even) td{background:#f8f9fb}
@@ -58,7 +59,7 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 <a href="price-matrix.xlsx" class="btn btn-e">导出Excel</a>
 <input id="q" placeholder="搜索商品ID/编码/规格..." oninput="refresh()">
 <select id="f" onchange="refresh()">
-<option value="">全部活动</option><option value="9">618大促</option><option value="10">百亿补贴</option><option value="11">淘宝秒杀</option><option value="12">天猫U先</option><option value="13">超级立减</option><option value="14">品牌新享</option>
+<option value="">全部活动</option><option value="9">官方大促</option><option value="10">百亿补贴</option><option value="11">淘宝秒杀</option><option value="12">天猫U先</option><option value="13">超级立减</option><option value="14">顺手买一件</option><option value="15">品牌新享</option>
 </select>
 <span class="stats" id="st"></span>
 </div>
@@ -73,7 +74,7 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 <textarea id="importJSON" placeholder='粘贴书签抓取的JSON...' oninput="previewImport()"></textarea>
 <div class="row">
 <label>活动类型:</label>
-<select id="importType"><option value="auto">自动识别</option><option value="618大促">618大促</option><option value="百亿补贴">百亿补贴</option><option value="淘宝秒杀">淘宝秒杀</option><option value="天猫U先">天猫U先</option><option value="超级立减">超级立减</option><option value="品牌新享">品牌新享</option><option value="顺手买一件">顺手买一件</option></select>
+<select id="importType"><option value="auto">自动识别</option><option value="官方大促">官方大促</option><option value="百亿补贴">百亿补贴</option><option value="淘宝秒杀">淘宝秒杀</option><option value="天猫U先">天猫U先</option><option value="超级立减">超级立减</option><option value="顺手买一件">顺手买一件</option><option value="品牌新享">品牌新享</option></select>
 <label>加速类型(品牌新享时):</label>
 <select id="importAcc"><option value="auto">自动</option><option value="超级新客加速">新客加速</option><option value="超级老客加速">老客加速</option></select>
 </div>
@@ -113,9 +114,9 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 var C=[
 {k:'商品ID',l:'商品ID',c:'cb'},{k:'SKUID',l:'SKUID',c:'cb'},{k:'商品编码',l:'商品编码',c:'cb'},{k:'商品规格名称',l:'商品规格名称',c:'cb'},
 {k:'品牌供价(26年)',l:'品牌供价',c:'co',m:1},{k:'官旗售价',l:'官旗售价',c:'co',m:1},{k:'管控底价',l:'管控底价',c:'co',m:1},
-{k:'页面价格',l:'页面价格',c:'cg',m:1},{k:'官方立减金额(15%)',l:'官方立减',c:'cg',m:1},{k:'618大促券后价',l:'618大促券后价',c:'c6',m:1},
+{k:'页面价格',l:'页面价格',c:'cg',m:1},{k:'官方立减金额(15%)',l:'官方立减',c:'cg',m:1},{k:'官方大促券后价',l:'官方大促券后价',c:'c6',m:1},
 {k:'百亿补贴活动价',l:'百亿补贴活动价',c:'cby',m:1},{k:'淘宝秒杀供货价',l:'淘宝秒杀供货价',c:'cms',m:1},{k:'天猫U先活动价',l:'天猫U先活动价',c:'cux',m:1},
-{k:'超级立减活动价',l:'超级立减活动价',c:'clj',m:1},{k:'品牌新享加速类型',l:'品牌新享加速',c:'cpx'},{k:'品牌新享费率%',l:'品牌新享费率',c:'cpx'},
+{k:'超级立减活动价',l:'超级立减活动价',c:'clj',m:1},{k:'顺手买一件活动价',l:'顺手买一件活动价',c:'cso',m:1},{k:'品牌新享加速类型',l:'品牌新享加速',c:'cpx'},{k:'品牌新享费率%',l:'品牌新享费率',c:'cpx'},
 {k:'参与活动数',l:'参与数',c:'ccn'}];
 var D=[];
 
@@ -146,7 +147,7 @@ function previewImport(){
     var items=JSON.parse(raw);
     if(!Array.isArray(items))items=[items];
     importPreviewData=items;
-    var pidCol='618大促券后价';
+    var pidCol='官方大促券后价';
     var actCol='品牌新享加速类型';
     var stats='共 '+items.length+' 条记录, 涉及 '+[...new Set(items.map(function(i){return i.商品ID}))].length+' 个商品';
     document.getElementById('importPreview').innerHTML=stats;
@@ -163,26 +164,28 @@ function doImport(){
   
   var actType=document.getElementById('importType').value;
   var accType=document.getElementById('importAcc').value;
-  var aid='618大促券后价';
+  var aid='官方大促券后价';
   
   // 确定目标列
   if(actType==='auto'){
     var sample=importPreviewData[0]||{};
     var an=sample.活动名称||'';
-    if(an.indexOf('618')>=0||an.indexOf('大促')>=0){actType='618大促';aid='618大促券后价'}
+    if(an.indexOf('618')>=0||an.indexOf('大促')>=0||an.indexOf('抢先购')>=0){actType='官方大促';aid='官方大促券后价'}
     else if(an.indexOf('百亿补贴')>=0){actType='百亿补贴';aid='百亿补贴活动价'}
     else if(an.indexOf('秒杀')>=0){actType='淘宝秒杀';aid='淘宝秒杀供货价'}
     else if(an.indexOf('U先')>=0||an.indexOf('派样')>=0){actType='天猫U先';aid='天猫U先活动价'}
+    else if(an.indexOf('顺手')>=0||an.indexOf('换购')>=0){actType='顺手买一件';aid='顺手买一件活动价'}
     else if(an.indexOf('立减')>=0){actType='超级立减';aid='超级立减活动价'}
     else if(an.indexOf('新享')>=0||an.indexOf('新客')>=0||an.indexOf('老客')>=0){actType='品牌新享';aid='品牌新享加速类型'}
     else{actType='未知'}
   }
   
-  if(actType==='618大促')aid='618大促券后价';
+  if(actType==='官方大促')aid='官方大促券后价';
   else if(actType==='百亿补贴')aid='百亿补贴活动价';
   else if(actType==='淘宝秒杀')aid='淘宝秒杀供货价';
   else if(actType==='天猫U先')aid='天猫U先活动价';
   else if(actType==='超级立减')aid='超级立减活动价';
+  else if(actType==='顺手买一件')aid='顺手买一件活动价';
   else if(actType==='品牌新享')aid='品牌新享加速类型';
   
   var colKey=C.find(function(c){return c.l===aid||c.l.indexOf(aid.replace(/[券后价|活动价|供货价]/g,''))>=0});
@@ -208,11 +211,11 @@ function doImport(){
       }
       // 更新活动数
       var cnt=0;
-      [9,10,11,12,13,14].forEach(function(i){
+      [9,10,11,12,13,14,15].forEach(function(i){
         if(row[C[i].k]&&row[C[i].k]!=='')cnt++;
       });
-      if(row[C[14].k]&&row[C[14].k].indexOf('新/老客')>=0)cnt++;
-      row[C[16].k]=cnt;
+      if(row[C[15].k]&&row[C[15].k].indexOf('新/老客')>=0)cnt++;
+      row[C[17].k]=cnt;
       updated++;
     });
   });
