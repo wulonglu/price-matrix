@@ -4,16 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>价盘管理表</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
 .toolbar{background:#fff;padding:10px 16px;border-bottom:1px solid #ddd;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .toolbar h1{font-size:17px;color:#1F4E79}
-.toolbar input,.toolbar select,.toolbar button{padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
-.toolbar button{background:#1F4E79;color:#fff;border-color:#1F4E79;cursor:pointer}
-.toolbar button:hover{opacity:.9}
+.toolbar input,.toolbar select,.toolbar button,.toolbar a.btn{padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px;text-decoration:none}
+.toolbar button,.toolbar a.btn{background:#1F4E79;color:#fff;border-color:#1F4E79;cursor:pointer;display:inline-block}
+.toolbar button:hover,.toolbar a.btn:hover{opacity:.9}
 .toolbar .btn-e{background:#2E7D32;border-color:#2E7D32}
+.toolbar .btn-i{background:#C55A11;border-color:#C55A11}
+.toolbar .btn-s{background:#1A73E8;border-color:#1A73E8}
 .stats{font-size:12px;color:#888;margin-left:auto}
 .wrap{overflow-x:auto;padding:10px}
 #tbl{border-collapse:collapse;font-size:12px;width:100%;min-width:1500px}
@@ -33,12 +34,27 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 #tbl tr:nth-child(odd) td{background:#fff}
 #tbl tr:hover td{background:#e8f0fe!important}
 .ld{text-align:center;padding:40px;color:#888}
+
+/* 导入弹窗 */
+.modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.4);z-index:999;justify-content:center;align-items:center}
+.modal.on{display:flex}
+.modal-box{background:#fff;border-radius:8px;padding:24px;width:680px;max-width:95%;max-height:85vh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)}
+.modal-box h2{font-size:16px;color:#1F4E79;margin-bottom:12px}
+.modal-box textarea{width:100%;height:140px;border:1px solid #d9d9d9;border-radius:4px;padding:10px;font-family:monospace;font-size:12px;resize:vertical}
+.modal-box .row{display:flex;gap:10px;margin-top:12px;align-items:center}
+.modal-box .row label{font-size:13px;white-space:nowrap}
+.modal-box .row input,.modal-box .row select{flex:1;padding:6px 10px;border:1px solid #d9d9d9;border-radius:4px;font-size:13px}
+.modal-box .hint{font-size:12px;color:#888;margin-top:6px}
+.modal-box .result{background:#f8f9fb;border:1px solid #e0e0e0;border-radius:4px;padding:10px;margin-top:12px;font-size:12px;max-height:200px;overflow:auto}
+.modal-box .btns{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
 </style>
 </head>
 <body>
 <div class="toolbar">
 <h1>网店产品价盘管理表</h1>
-<a href="price-matrix.xlsx" class="btn-e" style="text-decoration:none;padding:6px 10px;border-radius:4px;font-size:13px;display:inline-block">导出Excel</a>
+<button class="btn-i" onclick="openImport()">导入活动数据</button>
+<button class="btn-s" onclick="saveAndPush()">保存到线上</button>
+<a href="price-matrix.xlsx" class="btn btn-e">导出Excel</a>
 <input id="q" placeholder="搜索商品ID/编码/规格..." oninput="refresh()">
 <select id="f" onchange="refresh()">
 <option value="">全部活动</option><option value="9">618大促</option><option value="10">百亿补贴</option><option value="11">淘宝秒杀</option><option value="12">天猫U先</option><option value="13">超级立减</option><option value="14">品牌新享</option>
@@ -47,6 +63,35 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 </div>
 <div class="wrap"><table id="tbl"><tbody></tbody></table></div>
 <div class="ld" id="ld">正在加载数据...</div>
+
+<!-- 导入面板 -->
+<div class="modal" id="importModal">
+<div class="modal-box">
+<h2>导入活动报名数据</h2>
+<p style="font-size:12px;color:#888;margin-bottom:8px">书签抓取后 Ctrl+V 粘贴 JSON，页面自动合并到价盘表</p>
+<textarea id="importJSON" placeholder='粘贴书签抓取的JSON...' oninput="previewImport()"></textarea>
+<div class="row">
+<label>活动类型:</label>
+<select id="importType"><option value="auto">自动识别</option><option value="618大促">618大促</option><option value="百亿补贴">百亿补贴</option><option value="淘宝秒杀">淘宝秒杀</option><option value="天猫U先">天猫U先</option><option value="超级立减">超级立减</option><option value="品牌新享">品牌新享</option><option value="顺手买一件">顺手买一件</option></select>
+<label>加速类型(品牌新享时):</label>
+<select id="importAcc"><option value="auto">自动</option><option value="超级新客加速">新客加速</option><option value="超级老客加速">老客加速</option></select>
+</div>
+<div class="result" id="importPreview" style="display:none"></div>
+<div class="btns">
+<button onclick="closeImport()" style="background:#888">取消</button>
+<button onclick="doImport()" style="background:#C55A11;color:#fff">合并到本地</button>
+</div>
+</div>
+</div>
+
+<!-- 保存结果提示 -->
+<div class="modal" id="saveModal">
+<div class="modal-box">
+<h2>保存完成</h2>
+<div class="result" id="saveResult"></div>
+<div class="btns"><button onclick="document.getElementById('saveModal').classList.remove('on')">关闭</button></div>
+</div>
+</div>
 
 <script>
 var C=[
@@ -65,26 +110,142 @@ var q=document.getElementById('q').value.toLowerCase(),fc=document.getElementByI
 if(q)rows=rows.filter(function(r){return C.some(function(c){var v=r[c.k];return v!=null&&String(v).toLowerCase().indexOf(q)>=0})});
 if(fc){var ci=parseInt(fc);rows=rows.filter(function(r){return r[C[ci].k]!=null&&r[C[ci].k]!==''})}
 var h='';
-// 表头行
 h+='<tr>';C.forEach(function(c){h+='<th class="'+c.c+'">'+c.l+'</th>'});h+='</tr>';
-// 数据行
 rows.forEach(function(r){h+='<tr>';C.forEach(function(c,i){var v=fmt(r[c.k],c);h+='<td>'+(c.m&&v!==''?'¥'+v:v)+'</td>'});h+='</tr>'});
 document.getElementById('tbl').innerHTML='<tbody>'+h+'</tbody>';
 document.getElementById('st').textContent=rows.length+' / '+D.length+' 条';
 }
 
-function exportX(){
-if(D.length===0)return;
-var a=[];a.push(C.map(function(c){return c.l}));
-D.forEach(function(r){a.push(C.map(function(c){var v=r[c.k];if(v==null)return'';if(typeof v==='number')return v;if(!isNaN(parseFloat(v)))return parseFloat(v);return v}))});
-var ws=XLSX.utils.aoa_to_sheet(a),wb=XLSX.utils.book_new();
-ws['!cols']=C.map(function(c,i){return i===3?{wch:30}:{wch:14}});
-var H={'cb':'1F4E79','co':'C55A11','cg':'2E7D32','c6':'C55A11','cby':'D42020','cms':'E05336','cux':'7B2D8B','clj':'1A73E8','cpx':'00838F','ccn':'2E7D32'};
-var R=XLSX.utils.decode_range(ws['!ref']);
-for(var i=R.s.c;i<=R.e.c;i++){var cr=XLSX.utils.encode_cell({r:0,c:i});ws[cr].s={fill:{patternType:'solid',fgColor:{rgb:H[C[i].c]},bgColor:{rgb:H[C[i].c]}},font:{color:{rgb:'FFFFFF'},bold:true},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}}}
-for(var j=1;j<=R.e.r;j++){var cr2=XLSX.utils.encode_cell({r:j,c:i});if(!ws[cr2])ws[cr2]={v:''};ws[cr2].s={fill:{patternType:'solid',fgColor:{rgb:j%2?'F8F9FB':'FFFFFF'}},alignment:{horizontal:i===3?'left':'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'CCCCCC'}},bottom:{style:'thin',color:{rgb:'CCCCCC'}},left:{style:'thin',color:{rgb:'CCCCCC'}},right:{style:'thin',color:{rgb:'CCCCCC'}}}}}
-XLSX.utils.book_append_sheet(wb,ws,'价盘管理表');
-XLSX.writeFile(wb,'价盘管理表_'+new Date().toISOString().slice(0,10)+'.xlsx');
+function openImport(){document.getElementById('importModal').classList.add('on')}
+function closeImport(){document.getElementById('importModal').classList.remove('on')}
+
+var importPreviewData=[];
+
+function previewImport(){
+  var raw=document.getElementById('importJSON').value.trim();
+  if(!raw){document.getElementById('importPreview').style.display='none';return}
+  try{
+    var items=JSON.parse(raw);
+    if(!Array.isArray(items))items=[items];
+    importPreviewData=items;
+    var pidCol='618大促券后价';
+    var actCol='品牌新享加速类型';
+    var stats='共 '+items.length+' 条记录, 涉及 '+[...new Set(items.map(function(i){return i.商品ID}))].length+' 个商品';
+    document.getElementById('importPreview').innerHTML=stats;
+    document.getElementById('importPreview').style.display='block';
+  }catch(e){
+    document.getElementById('importPreview').innerHTML='JSON格式错误: '+e.message;
+    document.getElementById('importPreview').style.display='block';
+    importPreviewData=[];
+  }
+}
+
+function doImport(){
+  if(importPreviewData.length===0)return alert('请先粘贴有效的JSON');
+  
+  var actType=document.getElementById('importType').value;
+  var accType=document.getElementById('importAcc').value;
+  var aid='618大促券后价';
+  
+  // 确定目标列
+  if(actType==='auto'){
+    var sample=importPreviewData[0]||{};
+    var an=sample.活动名称||'';
+    if(an.indexOf('618')>=0||an.indexOf('大促')>=0){actType='618大促';aid='618大促券后价'}
+    else if(an.indexOf('百亿补贴')>=0){actType='百亿补贴';aid='百亿补贴活动价'}
+    else if(an.indexOf('秒杀')>=0){actType='淘宝秒杀';aid='淘宝秒杀供货价'}
+    else if(an.indexOf('U先')>=0||an.indexOf('派样')>=0){actType='天猫U先';aid='天猫U先活动价'}
+    else if(an.indexOf('立减')>=0){actType='超级立减';aid='超级立减活动价'}
+    else if(an.indexOf('新享')>=0||an.indexOf('新客')>=0||an.indexOf('老客')>=0){actType='品牌新享';aid='品牌新享加速类型'}
+    else{actType='未知'}
+  }
+  
+  if(actType==='618大促')aid='618大促券后价';
+  else if(actType==='百亿补贴')aid='百亿补贴活动价';
+  else if(actType==='淘宝秒杀')aid='淘宝秒杀供货价';
+  else if(actType==='天猫U先')aid='天猫U先活动价';
+  else if(actType==='超级立减')aid='超级立减活动价';
+  else if(actType==='品牌新享')aid='品牌新享加速类型';
+  
+  var colKey=C.find(function(c){return c.l===aid||c.l.indexOf(aid.replace(/[券后价|活动价|供货价]/g,''))>=0});
+  if(!colKey)colKey=C[9]; // default to 618
+  
+  var updated=0;
+  importPreviewData.forEach(function(item){
+    var pid=item.商品ID||item.id||'';
+    if(!pid)return;
+    // 在产品表中找到该商品ID
+    var found=D.filter(function(r){return r['商品ID']==pid});
+    if(found.length===0)return;
+    
+    found.forEach(function(row){
+      if(actType==='品牌新享'){
+        if(accType!=='auto')row['品牌新享加速类型']=accType;
+        else if(item.加速类型)row['品牌新享加速类型']=item.加速类型;
+        if(item.费率)row['品牌新享费率%']=item.费率;
+      }else{
+        var key=colKey.k;
+        var price=item.活动普惠券后价||item.活动价||item.供货价||item.换购到手价;
+        if(price!=null)row[key]=parseFloat(price)||price;
+      }
+      // 更新活动数
+      var cnt=0;
+      [9,10,11,12,13,14].forEach(function(i){
+        if(row[C[i].k]&&row[C[i].k]!=='')cnt++;
+      });
+      if(row[C[14].k]&&row[C[14].k].indexOf('新/老客')>=0)cnt++;
+      row[C[16].k]=cnt;
+      updated++;
+    });
+  });
+  
+  refresh();
+  document.getElementById('importModal').classList.remove('on');
+  document.getElementById('importJSON').value='';
+  importPreviewData=[];
+  alert('已合并 '+updated+' 条');
+}
+
+// 保存到线上 (通过 GitHub API 提交)
+function saveAndPush(){
+  if(D.length===0)return alert('无数据');
+  var newJSON=JSON.stringify(D,null,2);
+  
+  // 使用 GitHub API 更新 data.json
+  // 先获取当前文件的 SHA
+  fetch('https://api.github.com/repos/wulonglu/price-matrix/contents/data.json')
+    .then(function(r){return r.json()})
+    .then(function(file){
+      var sha=file.sha;
+      // Base64 编码新内容
+      var content=btoa(unescape(encodeURIComponent(newJSON)));
+      var token=prompt('请输入 GitHub Token (只需repo权限):','');
+      if(!token)return;
+      
+      return fetch('https://api.github.com/repos/wulonglu/price-matrix/contents/data.json',{
+        method:'PUT',
+        headers:{
+          'Authorization':'token '+token,
+          'Content-Type':'application/json'
+        },
+        body:JSON.stringify({
+          message:'update campaign data',
+          content:content,
+          sha:sha,
+          branch:'main'
+        })
+      });
+    })
+    .then(function(r){if(r)return r.json()})
+    .then(function(result){
+      var msg=result.commit?'已提交到 GitHub! (1分钟内刷新页面看最新数据)':'提交失败: '+(result.message||'未知错误');
+      document.getElementById('saveResult').innerHTML=msg;
+      document.getElementById('saveModal').classList.add('on');
+    })
+    .catch(function(e){
+      document.getElementById('saveResult').innerHTML='错误: '+e.message+'<br><br>可以手动复制 data.json 发给我来推送。';
+      document.getElementById('saveModal').classList.add('on');
+    });
 }
 
 fetch('data.json?v='+Date.now()).then(function(r){return r.json()}).then(function(d){D=d;document.getElementById('ld').style.display='none';refresh()});
