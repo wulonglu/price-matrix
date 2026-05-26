@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>价盘管理表</title>
+<script src="xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
@@ -354,26 +355,48 @@ function doBaseUpdate(){
 
 function exportExcel(){
   if(!D||!D.length){ alert('数据加载中，请稍后再试。'); return; }
-  var BOM='\uFEFF';
-  var csv=BOM;
-  var headers=[];
-  for(var i=0;i<C.length;i++){ headers.push(C[i].l); }
-  csv+=headers.join(',')+'\n';
+  var hdr1=[], hdr2=[];
+  // Build 2-row header matching web table
+  var groups=[{l:'基础信息',c:'cb',ks:['商品ID','SKUID','商品编码','商品规格名称']},{l:'品牌控价',c:'co',ks:['品牌供价(26年)','官旗售价','管控底价']},{l:'店铺定价',c:'cg',ks:['页面价格','官方立减金额(15%)']},{l:'活动价格',c:'c6',ks:['官方大促券后价','百亿补贴活动价','淘宝秒杀供货价','天猫U先活动价','超级立减活动价','顺手买一件活动价']},{l:'品牌新享',c:'cpx',ks:['品牌新享加速','品牌新享费率']}];
+  for(var g=0;g<groups.length;g++){
+    var kk=groups[g].ks;
+    for(var k=0;k<kk.length;k++){
+      if(k===0) hdr1.push(groups[g].l); else hdr1.push('');
+      hdr2.push(kk[k]);
+    }
+  }
+  var rows=[[].concat(hdr1),[].concat(hdr2)];
   for(var i=0;i<D.length;i++){
     var row=[];
-    for(var j=0;j<C.length;j++){
-      var v=D[i][C[j].k];
-      var s=v!==null&&v!==undefined?String(v):'';
-      if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0){ s='"'+s.replace(/"/g,'""')+'"'; }
-      row.push(s);
+    for(var g=0;g<groups.length;g++){
+      var kk=groups[g].ks;
+      for(var k=0;k<kk.length;k++){ var v=D[i][kk[k]]; row.push(v!=null?v:''); }
     }
-    csv+=row.join(',')+'\n';
+    rows.push(row);
   }
-  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='网店产品价盘管理表.csv';
-  a.click();
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  // Color group headers
+  var colors={cb:'1F4E79',co:'C55A11',cg:'2E7D32',c6:'C55A11',cpx:'7B2D8B'};
+  var ref=XLSX.utils.decode_range(ws['!ref']);
+  for(var R=0;R<=1;R++) for(var C=0;C<=ref.e.c;C++){
+    var cell=XLSX.utils.encode_cell({r:R,c:C});
+    if(!ws[cell]) continue;
+    ws[cell].s={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},fill:{fgColor:{rgb:colors.cb}},alignment:{horizontal:'center',vertical:'center',wrapText:true}};
+    // Set group color
+    for(var g=0;g<groups.length;g++){ if(hdr1[C]===groups[g].l||(hdr1[C]===''&&C>0)){ ws[cell].s.fill.fgColor.rgb=colors[groups[g].c]; break; } }
+  }
+  // Merge group header cells
+  for(var g=0;g<groups.length;g++){
+    var kk=groups[g].ks, sc=-1, ec=-1;
+    for(var c=0;c<hdr1.length;c++){ if(hdr2[c]===kk[0]) sc=c; if(hdr2[c]===kk[kk.length-1]) ec=c; }
+    if(sc>=0&&ec>sc) ws['!merges']=(ws['!merges']||[]).concat([{s:{r:0,c:sc},e:{r:0,c:ec}}]);
+  }
+  // Auto width
+  ws['!cols']=[];
+  for(var c=0;c<=ref.e.c;c++){ ws['!cols'][c]={wch:16}; }
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'价盘表');
+  XLSX.writeFile(wb,'网店产品价盘管理表.xlsx');
 }
 
 </script>
