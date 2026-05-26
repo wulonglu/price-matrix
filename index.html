@@ -56,7 +56,7 @@ body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;
 <button class="btn-i" onclick="openImport()">导入活动数据</button>
 <button class="btn-i" onclick="openBaseUpdate()" style="background:#7B2D8B;border-color:#7B2D8B">更新基础价格</button>
 <button class="btn-s" onclick="saveAndPush()">保存到线上</button>
-<a href="price-matrix.xlsx" class="btn btn-e">导出Excel</a>
+<button class="btn btn-e" onclick="exportExcel()">导出Excel</button>
 <input id="q" placeholder="搜索商品ID/编码/规格..." oninput="refresh()">
 <select id="f" onchange="refresh()">
 <option value="">全部活动</option><option value="9">官方大促</option><option value="10">百亿补贴</option><option value="11">淘宝秒杀</option><option value="12">天猫U先</option><option value="13">超级立减</option><option value="14">顺手买一件</option><option value="15">品牌新享</option>
@@ -350,6 +350,24 @@ function doBaseUpdate(){
   baseUpdateData=null;
   refresh();
   alert('已更新 '+updated+' 条基础价格。点"保存到线上"推送到GitHub。');
+}
+
+function exportExcel(){
+  var headers=[];
+  for(var i=0;i<C.length;i++){ headers.push(C[i].label); }
+  var rows=[headers];
+  for(var i=0;i<D.length;i++){
+    var row=[];
+    for(var j=0;j<C.length;j++){
+      var v=D[i][C[j].key];
+      row.push(v!==null&&v!==undefined?v:'');
+    }
+    rows.push(row);
+  }
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'价盘表');
+  XLSX.writeFile(wb,'网店产品价盘管理表.xlsx');
 }
 
 </script>
