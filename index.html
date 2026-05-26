@@ -393,7 +393,7 @@ function exportExcel(){
   for(var c=0;c<=ref.e.c;c++){ ws['!cols'][c]={wch:18}; }
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'价盘表');
-  XLSX.writeFile(wb,'网店产品价盘管理表.xlsx');
+  XLSX.writeFile(wb,'网店产品价盘管理表.xlsx',{bookType:'xlsx',cellStyles:true});
 }
 
 </script>
