@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>价盘管理表</title>
-<script src="https://unpkg.com/xlsx@0.20.0/dist/xlsx.full.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
@@ -355,22 +354,26 @@ function doBaseUpdate(){
 
 function exportExcel(){
   if(!D||!D.length){ alert('数据加载中，请稍后再试。'); return; }
-  if(typeof XLSX==='undefined'){ alert('导出组件加载中，请稍后再试。'); return; }
+  var BOM='\uFEFF';
+  var csv=BOM;
   var headers=[];
   for(var i=0;i<C.length;i++){ headers.push(C[i].label); }
-  var rows=[headers];
+  csv+=headers.join(',')+'\n';
   for(var i=0;i<D.length;i++){
     var row=[];
     for(var j=0;j<C.length;j++){
       var v=D[i][C[j].key];
-      row.push(v!==null&&v!==undefined?v:'');
+      var s=v!==null&&v!==undefined?String(v):'';
+      if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0){ s='"'+s.replace(/"/g,'""')+'"'; }
+      row.push(s);
     }
-    rows.push(row);
+    csv+=row.join(',')+'\n';
   }
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'价盘表');
-  XLSX.writeFile(wb,'网店产品价盘管理表.xlsx');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='网店产品价盘管理表.csv';
+  a.click();
 }
 
 </script>
