@@ -116,7 +116,7 @@ var C=[
 {k:'品牌供价(26年)',l:'品牌供价',c:'co',m:1},{k:'官旗售价',l:'官旗售价',c:'co',m:1},{k:'管控底价',l:'管控底价',c:'co',m:1},
 {k:'页面价格',l:'页面价格',c:'cg',m:1},{k:'官方立减金额(15%)',l:'官方立减',c:'cg',m:1},{k:'官方大促券后价',l:'官方大促券后价',c:'c6',m:1},
 {k:'百亿补贴活动价',l:'百亿补贴活动价',c:'cby',m:1},{k:'淘宝秒杀供货价',l:'淘宝秒杀供货价',c:'cms',m:1},{k:'天猫U先活动价',l:'天猫U先活动价',c:'cux',m:1},
-{k:'超级立减活动价',l:'超级立减活动价',c:'clj',m:1},{k:'顺手买一件活动价',l:'顺手买一件活动价',c:'cso',m:1},{k:'品牌新享加速类型',l:'品牌新享加速',c:'cpx'},{k:'品牌新享费率%',l:'品牌新享费率',c:'cpx'},
+{k:'超级立减活动价',l:'超级立减活动价',c:'clj',m:1},{k:'顺手买一件活动价',l:'顺手买一件活动价',c:'cso',m:1},{k:'品牌新享加速',l:'品牌新享加速',c:'cpx'},{k:'品牌新享费率',l:'品牌新享费率',c:'cpx'},
 {k:'参与活动数',l:'参与数',c:'ccn'}];
 var D=[];
 
@@ -357,12 +357,12 @@ function exportExcel(){
   var BOM='\uFEFF';
   var csv=BOM;
   var headers=[];
-  for(var i=0;i<C.length;i++){ headers.push(C[i].label); }
+  for(var i=0;i<C.length;i++){ headers.push(C[i].l); }
   csv+=headers.join(',')+'\n';
   for(var i=0;i<D.length;i++){
     var row=[];
     for(var j=0;j<C.length;j++){
-      var v=D[i][C[j].key];
+      var v=D[i][C[j].k];
       var s=v!==null&&v!==undefined?String(v):'';
       if(s.indexOf(',')>=0||s.indexOf('"')>=0||s.indexOf('\n')>=0){ s='"'+s.replace(/"/g,'""')+'"'; }
       row.push(s);
