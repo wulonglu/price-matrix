@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>价盘管理表</title>
 <script src="xlsx.full.min.js"></script>
+<script src="exceljs.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:"Microsoft YaHei","微软雅黑",sans-serif;background:#f5f6f8;color:#333}
@@ -355,45 +356,42 @@ function doBaseUpdate(){
 
 function exportExcel(){
   if(!D||!D.length){ alert('数据加载中，请稍后再试。'); return; }
-  var headers=C.map(function(c){ return c.l; });
-  var colors={cb:'1F4E79',co:'C55A11',cg:'2E7D32',c6:'C55A11',cby:'D42020',cms:'E05336',cux:'7B2D8B',clj:'1A73E8',cso:'B76E2E',cpx:'00838F',ccn:'2E7D32'};
-  // Build rows
-  var rows=[headers];
+  var cc={cb:'FF1F4E79',co:'FFC55A11',cg:'FF2E7D32',c6:'FFC55A11',cby:'FFD42020',cms:'FFE05336',cux:'FF7B2D8B',clj:'FF1A73E8',cso:'FFB76E2E',cpx:'FF00838F',ccn:'FF2E7D32'};
+  var wb=new ExcelJS.Workbook();
+  var ws=wb.addWorksheet('价盘表');
+
+  // Header row
+  var hr=ws.addRow(C.map(function(c){return c.l;}));
+  hr.eachCell(function(cell,col){
+    var clr=cc[C[col-1].c]||'FF1F4E79';
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:clr}};
+    cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11,name:'Microsoft YaHei'};
+    cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};
+    cell.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+  });
+  ws.getRow(1).height=22;
+
+  // Data rows
   for(var i=0;i<D.length;i++){
-    var row=[];
-    for(var j=0;j<C.length;j++){
-      var v=fmt(D[i][C[j].k],C[j]);
-      row.push(C[j].m&&v!==''?'¥'+v:v+'');
-    }
-    rows.push(row);
+    var dr=ws.addRow(C.map(function(c){ var v=fmt(D[i][c.k],c); return c.m&&v!==''?('¥'+v):(v||''); }));
+    dr.eachCell(function(cell,col){
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+      cell.font={size:11,name:'Microsoft YaHei'};
+      if(i%2===1) cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};
+    });
   }
-  var ws=XLSX.utils.aoa_to_sheet(rows);
-  var ref=XLSX.utils.decode_range(ws['!ref']);
-  // Style header row
-  for(var c=0;c<=ref.e.c;c++){
-    var cell=XLSX.utils.encode_cell({r:0,c:c});
-    if(!ws[cell]) ws[cell]={v:headers[c]};
-    var clr=colors[C[c].c]||'1F4E79';
-    ws[cell].s={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},fill:{fgColor:{rgb:clr}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}};
-  }
-  // Style data rows with alternating colors
-  for(var r=1;r<=ref.e.r;r++){
-    for(var c=0;c<=ref.e.c;c++){
-      var cell=XLSX.utils.encode_cell({r:r,c:c});
-      if(ws[cell]){
-        ws[cell].s=ws[cell].s||{};
-        ws[cell].s.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
-        ws[cell].s.alignment={horizontal:'center',vertical:'center'};
-        if(r%2===0) ws[cell].s.fill={fgColor:{rgb:'F8F9FB'}};
-      }
-    }
-  }
+
   // Auto width
-  ws['!cols']=[];
-  for(var c=0;c<=ref.e.c;c++){ ws['!cols'][c]={wch:18}; }
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'价盘表');
-  XLSX.writeFile(wb,'网店产品价盘管理表.xlsx',{bookType:'xlsx',cellStyles:true});
+  ws.columns.forEach(function(col){col.width=18;});
+
+  wb.xlsx.writeBuffer().then(function(buf){
+    var blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='网店产品价盘管理表.xlsx';
+    a.click();
+  });
 }
 
 </script>
