@@ -355,45 +355,42 @@ function doBaseUpdate(){
 
 function exportExcel(){
   if(!D||!D.length){ alert('数据加载中，请稍后再试。'); return; }
-  var hdr1=[], hdr2=[];
-  // Build 2-row header matching web table
-  var groups=[{l:'基础信息',c:'cb',ks:['商品ID','SKUID','商品编码','商品规格名称']},{l:'品牌控价',c:'co',ks:['品牌供价(26年)','官旗售价','管控底价']},{l:'店铺定价',c:'cg',ks:['页面价格','官方立减金额(15%)']},{l:'活动价格',c:'c6',ks:['官方大促券后价','百亿补贴活动价','淘宝秒杀供货价','天猫U先活动价','超级立减活动价','顺手买一件活动价']},{l:'品牌新享',c:'cpx',ks:['品牌新享加速','品牌新享费率']}];
-  for(var g=0;g<groups.length;g++){
-    var kk=groups[g].ks;
-    for(var k=0;k<kk.length;k++){
-      if(k===0) hdr1.push(groups[g].l); else hdr1.push('');
-      hdr2.push(kk[k]);
-    }
-  }
-  var rows=[[].concat(hdr1),[].concat(hdr2)];
+  var headers=C.map(function(c){ return c.l; });
+  var colors={cb:'1F4E79',co:'C55A11',cg:'2E7D32',c6:'C55A11',cby:'D42020',cms:'E05336',cux:'7B2D8B',clj:'1A73E8',cso:'B76E2E',cpx:'00838F',ccn:'2E7D32'};
+  // Build rows
+  var rows=[headers];
   for(var i=0;i<D.length;i++){
     var row=[];
-    for(var g=0;g<groups.length;g++){
-      var kk=groups[g].ks;
-      for(var k=0;k<kk.length;k++){ var v=D[i][kk[k]]; row.push(v!=null?v:''); }
+    for(var j=0;j<C.length;j++){
+      var v=fmt(D[i][C[j].k],C[j]);
+      row.push(C[j].m&&v!==''?'¥'+v:v+'');
     }
     rows.push(row);
   }
   var ws=XLSX.utils.aoa_to_sheet(rows);
-  // Color group headers
-  var colors={cb:'1F4E79',co:'C55A11',cg:'2E7D32',c6:'C55A11',cpx:'7B2D8B'};
   var ref=XLSX.utils.decode_range(ws['!ref']);
-  for(var R=0;R<=1;R++) for(var C=0;C<=ref.e.c;C++){
-    var cell=XLSX.utils.encode_cell({r:R,c:C});
-    if(!ws[cell]) continue;
-    ws[cell].s={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},fill:{fgColor:{rgb:colors.cb}},alignment:{horizontal:'center',vertical:'center',wrapText:true}};
-    // Set group color
-    for(var g=0;g<groups.length;g++){ if(hdr1[C]===groups[g].l||(hdr1[C]===''&&C>0)){ ws[cell].s.fill.fgColor.rgb=colors[groups[g].c]; break; } }
+  // Style header row
+  for(var c=0;c<=ref.e.c;c++){
+    var cell=XLSX.utils.encode_cell({r:0,c:c});
+    if(!ws[cell]) ws[cell]={v:headers[c]};
+    var clr=colors[C[c].c]||'1F4E79';
+    ws[cell].s={font:{bold:true,color:{rgb:'FFFFFF'},sz:11},fill:{fgColor:{rgb:clr}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:{top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}}};
   }
-  // Merge group header cells
-  for(var g=0;g<groups.length;g++){
-    var kk=groups[g].ks, sc=-1, ec=-1;
-    for(var c=0;c<hdr1.length;c++){ if(hdr2[c]===kk[0]) sc=c; if(hdr2[c]===kk[kk.length-1]) ec=c; }
-    if(sc>=0&&ec>sc) ws['!merges']=(ws['!merges']||[]).concat([{s:{r:0,c:sc},e:{r:0,c:ec}}]);
+  // Style data rows with alternating colors
+  for(var r=1;r<=ref.e.r;r++){
+    for(var c=0;c<=ref.e.c;c++){
+      var cell=XLSX.utils.encode_cell({r:r,c:c});
+      if(ws[cell]){
+        ws[cell].s=ws[cell].s||{};
+        ws[cell].s.border={top:{style:'thin'},bottom:{style:'thin'},left:{style:'thin'},right:{style:'thin'}};
+        ws[cell].s.alignment={horizontal:'center',vertical:'center'};
+        if(r%2===0) ws[cell].s.fill={fgColor:{rgb:'F8F9FB'}};
+      }
+    }
   }
   // Auto width
   ws['!cols']=[];
-  for(var c=0;c<=ref.e.c;c++){ ws['!cols'][c]={wch:16}; }
+  for(var c=0;c<=ref.e.c;c++){ ws['!cols'][c]={wch:18}; }
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'价盘表');
   XLSX.writeFile(wb,'网店产品价盘管理表.xlsx');
